@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: anonymous-chat
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/Dockerfile.prod
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: REDIS_URL
+        value: redis://localhost:6379
+      - key: DATABASE_URL
+        sync: false
+
+  - type: redis
+    name: anonymous-chat-redis
+    plan: free
+
+  - type: pserv
+    name: anonymous-chat-db
+    runtime: docker
+    plan: free
