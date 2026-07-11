@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Anonymous Chat</title>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+<h1>匿名聊天室</h1>
+<div id="messages"></div>
+<input id="input" placeholder="输入消息">
+<button onclick="sendMessage()">发送</button>
+<script>
+const socket = io();
+const box = document.getElementById('messages');
+socket.on('message', msg => {
+  box.innerHTML += '<p>' + msg + '</p>';
+});
+function sendMessage(){
+  const input=document.getElementById('input');
+  socket.send(input.value);
+  input.value='';
+}
+</script>
+</body>
+</html>
