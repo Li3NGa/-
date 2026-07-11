@@ -12,12 +12,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///cha
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 redis_url = os.getenv('REDIS_URL', 'redis://redis:6379')
-socketio = SocketIO(
-    app,
-    cors_allowed_origins='*',
-    message_queue=redis_url
-)
-
+socketio = SocketIO(app, cors_allowed_origins='*', message_queue=redis_url)
 db = SQLAlchemy(app)
 
 users = {}
@@ -32,6 +27,10 @@ class Message(db.Model):
 with app.app_context():
     db.create_all()
 
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok'})
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -39,10 +38,7 @@ def index():
 @app.route('/api/history')
 def history():
     messages = Message.query.order_by(Message.id.desc()).limit(50).all()
-    return jsonify([
-        {'user': m.username, 'text': m.content, 'time': m.created_at.isoformat()}
-        for m in reversed(messages)
-    ])
+    return jsonify([{'user': m.username, 'text': m.content, 'time': m.created_at.isoformat()} for m in reversed(messages)])
 
 @app.route('/admin/users')
 def admin_users():
@@ -65,11 +61,9 @@ def message(data):
     username = users.get(request.sid, '匿名用户')
     if username in banned_users:
         return
-
     content = html.escape(str(data))[:500]
     db.session.add(Message(username=username, content=content))
     db.session.commit()
-
     emit('message', {'user': username, 'text': content}, broadcast=True)
 
 @socketio.on('disconnect')
