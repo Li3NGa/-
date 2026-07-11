@@ -1,0 +1,27 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.prod
+    env_file:
+      - ../config/production.env.example
+    depends_on:
+      - redis
+      - postgres
+
+  redis:
+    image: redis:7-alpine
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: chat
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - app
