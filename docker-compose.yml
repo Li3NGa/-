@@ -1,8 +1,23 @@
+version: '3.9'
+
 services:
   chat:
     build: .
     ports:
       - "5000:5000"
+    depends_on:
+      - redis
     environment:
-      - DEBUG=false
+      - REDIS_HOST=redis
     restart: always
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - chat
