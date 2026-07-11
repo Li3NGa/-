@@ -4,13 +4,20 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import random
 import html
+import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'anonymous-chat-secret'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'anonymous-chat-secret')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///chat.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-socketio = SocketIO(app, cors_allowed_origins='*')
+redis_url = os.getenv('REDIS_URL', 'redis://redis:6379')
+socketio = SocketIO(
+    app,
+    cors_allowed_origins='*',
+    message_queue=redis_url
+)
+
 db = SQLAlchemy(app)
 
 users = {}
@@ -60,8 +67,7 @@ def message(data):
         return
 
     content = html.escape(str(data))[:500]
-    record = Message(username=username, content=content)
-    db.session.add(record)
+    db.session.add(Message(username=username, content=content))
     db.session.commit()
 
     emit('message', {'user': username, 'text': content}, broadcast=True)
