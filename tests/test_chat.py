@@ -1,7 +1,21 @@
-from services.chat_service import ChatService
+import unittest
+
+from app import app
 
 
-def test_add_message():
-    service = ChatService()
-    result = service.add_message('user', 'hello')
-    assert result['content'] == 'hello'
+class ChatTest(unittest.TestCase):
+    def setUp(self):
+        app.config['TESTING'] = True
+        self.client = app.test_client()
+
+    def test_history_api(self):
+        response = self.client.get('/api/history')
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_api(self):
+        response = self.client.get('/admin/users')
+        self.assertEqual(response.status_code, 200)
+
+
+if __name__ == '__main__':
+    unittest.main()
