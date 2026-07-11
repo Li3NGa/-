@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
@@ -14,6 +14,7 @@ socketio = SocketIO(app, cors_allowed_origins='*')
 db = SQLAlchemy(app)
 
 users = {}
+banned_users = set()
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -28,9 +29,26 @@ with app.app_context():
 def index():
     return render_template('index.html')
 
+@app.route('/api/history')
+def history():
+    messages = Message.query.order_by(Message.id.desc()).limit(50).all()
+    return jsonify([
+        {'user': m.username, 'text': m.content, 'time': m.created_at.isoformat()}
+        for m in reversed(messages)
+    ])
+
+@app.route('/admin/users')
+def admin_users():
+    return jsonify({'online': list(users.values()), 'count': len(users)})
+
+@app.route('/admin/ban/<user>')
+def admin_ban(user):
+    banned_users.add(user)
+    return jsonify({'status': 'banned', 'user': user})
+
 @socketio.on('connect')
 def connect():
-    username = f'游客{random.randint(1000, 9999)}'
+    username = f'游客{random.randint(1000,9999)}'
     users[request.sid] = username
     emit('system', f'{username} 加入聊天室', broadcast=True)
     emit('online_count', {'count': len(users)}, broadcast=True)
@@ -38,8 +56,10 @@ def connect():
 @socketio.on('message')
 def message(data):
     username = users.get(request.sid, '匿名用户')
-    content = html.escape(str(data))[:500]
+    if username in banned_users:
+        return
 
+    content = html.escape(str(data))[:500]
     record = Message(username=username, content=content)
     db.session.add(record)
     db.session.commit()
@@ -53,4 +73,4 @@ def disconnect():
     emit('online_count', {'count': len(users)}, broadcast=True)
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000)
