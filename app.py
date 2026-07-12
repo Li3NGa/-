@@ -5,6 +5,7 @@ from datetime import datetime
 import random
 import html
 import os
+import time
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'anonymous-chat-secret')
@@ -17,6 +18,7 @@ db = SQLAlchemy(app)
 
 users = {}
 banned_users = set()
+message_rate = {}
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -38,7 +40,10 @@ def index():
 @app.route('/api/history')
 def history():
     messages = Message.query.order_by(Message.id.desc()).limit(50).all()
-    return jsonify([{'user': m.username, 'text': m.content, 'time': m.created_at.isoformat()} for m in reversed(messages)])
+    return jsonify([
+        {'user': m.username, 'text': m.content, 'time': m.created_at.isoformat()}
+        for m in reversed(messages)
+    ])
 
 @app.route('/admin/users')
 def admin_users():
@@ -59,16 +64,42 @@ def connect():
 @socketio.on('message')
 def message(data):
     username = users.get(request.sid, '匿名用户')
+
     if username in banned_users:
         return
+
+    now = time.time()
+    last = message_rate.get(request.sid, 0)
+    if now - last < 1:
+        emit('system', '发送过快，请稍后再试')
+        return
+    message_rate[request.sid] = now
+
     content = html.escape(str(data))[:500]
+    if not content.strip():
+        return
+
     db.session.add(Message(username=username, content=content))
     db.session.commit()
-    emit('message', {'user': username, 'text': content}, broadcast=True)
+
+    emit('message', {
+        'user': username,
+        'text': content,
+        'time': datetime.utcnow().isoformat()
+    }, broadcast=True)
+
+@socketio.on('set_nickname')
+def set_nickname(name):
+    if not name:
+        return
+    safe_name = html.escape(str(name))[:16]
+    users[request.sid] = safe_name
+    emit('system', f'用户修改昵称为 {safe_name}', broadcast=True)
 
 @socketio.on('disconnect')
 def disconnect():
     username = users.pop(request.sid, '匿名用户')
+    message_rate.pop(request.sid, None)
     emit('system', f'{username} 离开聊天室', broadcast=True)
     emit('online_count', {'count': len(users)}, broadcast=True)
 
