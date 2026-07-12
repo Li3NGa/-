@@ -1,21 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-<meta charset="utf-8">
-<title>Anonymous Chat Room</title>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anonymous Chat</title>
 <link rel="stylesheet" href="/static/css/style.css">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 <div class="chat-container">
-<h1>匿名聊天室</h1>
-<div>用户: <span id="username">生成中...</span></div>
-<div>在线人数: <span id="online">0</span></div>
+<header>
+<h1>Anonymous Chat</h1>
+<div>🟢 在线人数: <span id="online">0</span></div>
+<button onclick="changeNickname()">修改昵称</button>
+</header>
+
 <div id="messages"></div>
-<div class="input-area">
-<input id="input" placeholder="输入消息">
+
+<footer>
+<button onclick="addEmoji('😀')">😀</button>
+<input id="input" placeholder="输入消息...">
 <button onclick="sendMessage()">发送</button>
-</div>
+</footer>
 </div>
 <script src="/static/js/chat.js"></script>
 </body>
