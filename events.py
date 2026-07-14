@@ -24,13 +24,16 @@ def register_socket_events(socketio):
         username = data.get('username')
         room_id = data.get('room_id', 'public')
 
-        join_room(room_id)
+        join_room(str(room_id))
         users.setdefault(username, {})['room'] = room_id
         room_service.join_room(room_id, username)
 
+        history = chat_service.get_messages(room_id)
+        emit('room_history', history)
+
         emit('system_message', {
             'message': f'{username} joined {room_id}'
-        }, room=room_id)
+        }, room=str(room_id))
 
         emit('room_joined', {'room_id': room_id})
 
@@ -39,12 +42,12 @@ def register_socket_events(socketio):
         username = data.get('username')
         room_id = data.get('room_id', 'public')
 
-        leave_room(room_id)
+        leave_room(str(room_id))
         room_service.leave_room(room_id, username)
 
         emit('system_message', {
             'message': f'{username} left {room_id}'
-        }, room=room_id)
+        }, room=str(room_id))
 
     @socketio.on('send_message')
     def handle_message(data):
@@ -52,8 +55,13 @@ def register_socket_events(socketio):
         room_id = data.get('room_id', 'public')
         content = data.get('content')
 
-        message = chat_service.add_message(username, content)
-        emit('new_message', message, room=room_id)
+        message = chat_service.add_message(
+            room_id,
+            username,
+            content
+        )
+
+        emit('new_message', message, room=str(room_id))
 
     @socketio.on('get_online_users')
     def online_users(data):
