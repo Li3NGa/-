@@ -6,18 +6,26 @@ const input = document.getElementById('input');
 const roomLabel = document.getElementById('room');
 
 let nickname = localStorage.getItem('nickname') || '';
-let roomId = localStorage.getItem('room') || 'public';
+let roomId = window.ROOM_ID || 'public';
+
+localStorage.setItem('room', roomId);
 
 socket.on('connect', () => {
     socket.emit('join_room', {
         username: nickname || 'Guest',
         room_id: roomId
     });
-    socket.emit('get_online_users', {room_id: roomId});
+});
+
+socket.on('room_history', messages => {
+    messageBox.innerHTML='';
+    messages.forEach(m=>{
+        addMessage(m.username,m.content);
+    });
 });
 
 socket.on('new_message', data => {
-    addMessage(data.username || data.user, data.content || data.text);
+    addMessage(data.username, data.content);
 });
 
 socket.on('system_message', data => {
@@ -25,10 +33,10 @@ socket.on('system_message', data => {
 });
 
 socket.on('online_count', data => {
-    online.textContent = data.count;
+    if(online) online.textContent=data.count;
 });
 
-function addMessage(user, text){
+function addMessage(user,text){
     const div=document.createElement('div');
     div.className='message';
     div.textContent=user+': '+text;
@@ -38,40 +46,15 @@ function addMessage(user, text){
 
 function sendMessage(){
     const text=input.value.trim();
-    if(text){
-        socket.emit('send_message', {
-            username:nickname || 'Guest',
-            room_id:roomId,
-            content:text
-        });
-        input.value='';
-    }
-}
+    if(!text)return;
 
-function changeRoom(){
-    const next=prompt('输入聊天室名称', roomId);
-    if(next){
-        roomId=next.substring(0,32);
-        localStorage.setItem('room', roomId);
-        roomLabel.textContent=roomId;
-        messageBox.innerHTML='';
-        socket.emit('join_room', {
-            username:nickname || 'Guest',
-            room_id:roomId
-        });
-    }
-}
+    socket.emit('send_message',{
+        content:text
+    });
 
-function changeNickname(){
-    const name=prompt('输入昵称',nickname);
-    if(name){
-        nickname=name;
-        localStorage.setItem('nickname',nickname);
-    }
+    input.value='';
 }
-
-function addEmoji(e){input.value+=e;}
 
 input.addEventListener('keydown',e=>{
-    if(e.key==='Enter') sendMessage();
+    if(e.key==='Enter')sendMessage();
 });
