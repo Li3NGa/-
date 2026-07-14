@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>聊天室大厅</title>
+</head>
+<body>
+<h1>Let Chat 聊天室大厅</h1>
+
+<button onclick="createRoom()">创建聊天室</button>
+
+<div id="rooms"></div>
+
+<script>
+async function loadRooms(){
+ const res = await fetch('/api/rooms');
+ const rooms = await res.json();
+ document.getElementById('rooms').innerHTML = rooms.map(r=>
+ `<div>
+ <h3>${r.name}</h3>
+ <p>${r.description}</p>
+ <button onclick="joinRoom(${r.id})">加入</button>
+ </div>`).join('');
+}
+
+function joinRoom(id){
+ location.href='/?room='+id;
+}
+
+async function createRoom(){
+ const name=prompt('聊天室名称');
+ if(!name)return;
+ await fetch('/api/rooms/create',{
+ method:'POST',
+ headers:{'Content-Type':'application/json'},
+ body:JSON.stringify({name:name})
+ });
+ loadRooms();
+}
+
+loadRooms();
+</script>
+</body>
+</html>
