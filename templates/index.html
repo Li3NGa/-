@@ -3,20 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Anonymous Chat</title>
+<title>Let Chat - Multi Room</title>
 <link rel="stylesheet" href="/static/css/style.css">
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 <div class="chat-container">
 <header>
-<h1>Anonymous Chat</h1>
-<div>🟢 在线人数: <span id="online">0</span></div>
-<button onclick="changeNickname()">修改昵称</button>
+<h1>Let Chat</h1>
+<div>房间: <span id="room">public</span> | 在线: <span id="online">0</span></div>
+<button onclick="changeRoom()">切换聊天室</button>
 </header>
-
 <div id="messages"></div>
-
 <footer>
 <button onclick="addEmoji('😀')">😀</button>
 <input id="input" placeholder="输入消息...">
