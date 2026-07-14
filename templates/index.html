@@ -11,8 +11,8 @@
 <div class="chat-container">
 <header>
 <h1>Let Chat</h1>
-<div>房间: <span id="room">public</span> | 在线: <span id="online">0</span></div>
-<button onclick="changeRoom()">切换聊天室</button>
+<div>房间: <span id="room">{{ room_id }}</span> | 在线: <span id="online">0</span></div>
+<a href="/">返回大厅</a>
 </header>
 <div id="messages"></div>
 <footer>
@@ -21,6 +21,9 @@
 <button onclick="sendMessage()">发送</button>
 </footer>
 </div>
+<script>
+window.ROOM_ID = '{{ room_id }}';
+</script>
 <script src="/static/js/chat.js"></script>
 </body>
 </html>
