@@ -8,17 +8,15 @@ import uuid
 import html
 import time
 import os
+import redis
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'anonymous-chat-secret')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///chat.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-socketio = SocketIO(
-    app,
-    cors_allowed_origins='*',
-    message_queue=os.getenv('REDIS_URL')
-)
+redis_url = os.getenv('REDIS_URL')
+socketio = SocketIO(app, cors_allowed_origins='*', message_queue=redis_url)
 
 db = SQLAlchemy(app)
 limiter = Limiter(get_remote_address, app=app, default_limits=['200 per day', '50 per hour'])
@@ -26,6 +24,11 @@ limiter = Limiter(get_remote_address, app=app, default_limits=['200 per day', '5
 users = {}
 user_rooms = {}
 message_rate = {}
+
+try:
+    redis_client = redis.Redis.from_url(redis_url) if redis_url else None
+except Exception:
+    redis_client = None
 
 
 class User(db.Model):
@@ -102,14 +105,27 @@ def handle_join(data):
     join_room(room_id)
     user_rooms[request.sid] = room_id
 
+    if redis_client:
+        redis_client.sadd(f'room:{room_id}:users', user['uuid'])
+
     if user['uuid']:
-        member = RoomMember(room_id=int(room_id), user_uuid=user['uuid'], role='member')
-        db.session.add(member)
+        db.session.add(RoomMember(room_id=int(room_id), user_uuid=user['uuid'], role='member'))
         db.session.commit()
+
+    online = redis_client.scard(f'room:{room_id}:users') if redis_client else 0
+    emit('online_count', {'count': online}, room=room_id)
 
     history = Message.query.filter_by(room_id=int(room_id)).order_by(Message.id.desc()).limit(50).all()
     emit('room_history', [{'username': m.username, 'content': m.content, 'time': m.created_at.isoformat()} for m in reversed(history)])
     emit('system_message', {'message': f"{user['nickname']} 加入聊天室"}, room=room_id)
+
+
+@socketio.on('typing')
+def typing(data):
+    room_id = user_rooms.get(request.sid)
+    user = users.get(request.sid, {'nickname': '匿名用户'})
+    if room_id:
+        emit('user_typing', {'username': user['nickname'], 'typing': bool(data.get('typing'))}, room=room_id, include_self=False)
 
 
 @socketio.on('send_message')
@@ -136,8 +152,11 @@ def send_message(data):
 @socketio.on('disconnect')
 def disconnect():
     room_id = user_rooms.get(request.sid)
+    user = users.get(request.sid)
     if room_id:
         leave_room(room_id)
+        if redis_client and user:
+            redis_client.srem(f'room:{room_id}:users', user['uuid'])
     users.pop(request.sid, None)
     user_rooms.pop(request.sid, None)
     message_rate.pop(request.sid, None)
