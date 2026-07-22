@@ -3,23 +3,68 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Let Chat - Multi Room</title>
+<title>Let Chat - 聊天室</title>
 <link rel="stylesheet" href="/static/css/style.css">
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 <div class="chat-container">
-<header>
-<h1>Let Chat</h1>
-<div>房间: <span id="room">{{ room_id }}</span> | 在线: <span id="online">0</span></div>
-<a href="/">返回大厅</a>
-</header>
-<div id="messages"></div>
-<footer>
-<button onclick="addEmoji('😀')">😀</button>
-<input id="input" placeholder="输入消息...">
-<button onclick="sendMessage()">发送</button>
-</footer>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>聊天室</h2>
+            <a href="/" class="back-btn">← 返回大厅</a>
+        </div>
+        <div class="current-room">
+            <div class="room-icon">📢</div>
+            <div>
+                <div class="room-name">房间 {{ room_id }}</div>
+                <div class="online-status">
+                    <span class="online-dot"></span>
+                    <span id="online">0</span> 人在线
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-section">
+            <h3>在线成员</h3>
+            <div id="online-users" class="user-list">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </aside>
+    
+    <main class="chat-main">
+        <header class="chat-header">
+            <div class="header-info">
+                <h1>Let Chat</h1>
+                <div class="header-meta">房间 {{ room_id }} · 实时聊天</div>
+            </div>
+            <div class="header-actions">
+                <span class="status-badge online">在线</span>
+            </div>
+        </header>
+        
+        <div id="messages" class="messages-container"></div>
+        
+        <footer class="chat-footer">
+            <div class="emoji-picker-btn" onclick="toggleEmojiPicker()">😊</div>
+            <div class="emoji-picker" id="emoji-picker">
+                <div class="emoji-grid">
+                    😀 😃 😄 😁 😆 😅 🤣 😂 🥲 ☺️ 😊 😇 
+                    🙂 🙂 🤗 🤩 🥳 😍 🥰 😘 😗 😙 😚 😋 
+                    😛 😜 🤪 😝 🤑 🤗 😎 🤓 🧐 😕 😟 
+                    🙁 ☹️ 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 
+                    😭 😱 😖 😣 😞 😓 😩 😫 🥱 😴 😌 😛 
+                    ❤️ 💔 🧡 💛 💚 💙 💜 🖤 🤍 🤎 
+                    😍🥰😘😗😙😚😋😛😜🤪😝🤑🤗😎🤓🧐😕😟
+                </div>
+            </div>
+            <input id="input" placeholder="输入消息...">
+            <button onclick="sendMessage()" class="send-btn">
+                <span>发送</span>
+                <span class="send-icon">➤</span>
+            </button>
+        </footer>
+    </main>
 </div>
 <script>
 window.ROOM_ID = '{{ room_id }}';
