@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from models.room import Room
-from app import db
+from app import db, limiter
 
 room_bp = Blueprint('rooms', __name__)
 
@@ -12,6 +12,7 @@ def list_rooms():
 
 
 @room_bp.route('/api/rooms/create', methods=['POST'])
+@limiter.limit('10 per minute')
 def create_room():
     data = request.json or {}
 

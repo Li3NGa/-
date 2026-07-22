@@ -1,16 +1,20 @@
-from dataclasses import dataclass
-from datetime import datetime
+from app import db
+from datetime import datetime, UTC
 
 
-@dataclass
-class Message:
-    room_id: int
-    username: str
-    content: str
-    created_at: datetime = datetime.now()
+class Message(db.Model):
+    __tablename__ = 'messages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, nullable=False)
+    user_uuid = db.Column(db.String(64))
+    username = db.Column(db.String(32))
+    content = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
 
     def to_dict(self):
         return {
+            'id': self.id,
             'room_id': self.room_id,
             'username': self.username,
             'content': self.content,

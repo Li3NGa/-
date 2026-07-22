@@ -1,71 +1,87 @@
 from flask_socketio import emit, join_room, leave_room
-
-from services.user_service import UserService
-from services.room_service import RoomService
-from services.chat_service import ChatService
-
-user_service = UserService()
-room_service = RoomService()
-chat_service = ChatService()
+from flask import request
+from app import db, redis_client
+from models.user import User
+from models.room import Room
+from models.message import Message
+from utils.nickname import generate_nickname
+import uuid
+import html
+import time
 
 users = {}
+user_rooms = {}
+message_rate = {}
 
 
 def register_socket_events(socketio):
 
     @socketio.on('connect')
     def handle_connect():
-        username = user_service.create_anonymous_user()
-        users[username] = {'room': None}
-        emit('user_info', {'username': username})
+        user_uuid = str(uuid.uuid4())
+        nickname = generate_nickname()
+        users[request.sid] = {'uuid': user_uuid, 'nickname': nickname}
+        db.session.add(User(uuid=user_uuid, nickname=nickname))
+        db.session.commit()
+        emit('user_info', {'username': nickname, 'uuid': user_uuid})
 
     @socketio.on('join_room')
     def handle_join(data):
-        username = data.get('username')
-        room_id = data.get('room_id', 'public')
+        room_id = str(data.get('room_id'))
+        user = users.get(request.sid, {'uuid': '', 'nickname': '匿名用户'})
+        join_room(room_id)
+        user_rooms[request.sid] = room_id
 
-        join_room(str(room_id))
-        users.setdefault(username, {})['room'] = room_id
-        room_service.join_room(room_id, username)
+        if redis_client:
+            redis_client.sadd(f'room:{room_id}:users', user['uuid'])
 
-        history = chat_service.get_messages(room_id)
-        emit('room_history', history)
+        if user['uuid']:
+            from models.room import RoomMember
+            db.session.add(RoomMember(room_id=int(room_id), user_uuid=user['uuid'], role='member'))
+            db.session.commit()
 
-        emit('system_message', {
-            'message': f'{username} joined {room_id}'
-        }, room=str(room_id))
+        online = redis_client.scard(f'room:{room_id}:users') if redis_client else 0
+        emit('online_count', {'count': online}, room=room_id)
 
-        emit('room_joined', {'room_id': room_id})
+        history = Message.query.filter_by(room_id=int(room_id)).order_by(Message.id.desc()).limit(50).all()
+        emit('room_history', [{'username': m.username, 'content': m.content, 'time': m.created_at.isoformat()} for m in reversed(history)])
+        emit('system_message', {'message': f"{user['nickname']} 加入聊天室"}, room=room_id)
 
-    @socketio.on('leave_room')
-    def handle_leave(data):
-        username = data.get('username')
-        room_id = data.get('room_id', 'public')
-
-        leave_room(str(room_id))
-        room_service.leave_room(room_id, username)
-
-        emit('system_message', {
-            'message': f'{username} left {room_id}'
-        }, room=str(room_id))
+    @socketio.on('typing')
+    def typing(data):
+        room_id = user_rooms.get(request.sid)
+        user = users.get(request.sid, {'nickname': '匿名用户'})
+        if room_id:
+            emit('user_typing', {'username': user['nickname'], 'typing': bool(data.get('typing'))}, room=room_id, include_self=False)
 
     @socketio.on('send_message')
-    def handle_message(data):
-        username = data.get('username')
-        room_id = data.get('room_id', 'public')
-        content = data.get('content')
+    def send_message(data):
+        room_id = user_rooms.get(request.sid)
+        if not room_id:
+            return
 
-        message = chat_service.add_message(
-            room_id,
-            username,
-            content
-        )
+        user = users.get(request.sid, {'uuid': '', 'nickname': '匿名用户'})
+        content = html.escape(str(data.get('content', '')))[:500]
+        if not content:
+            return
 
-        emit('new_message', message, room=str(room_id))
+        if time.time() - message_rate.get(request.sid, 0) < 1:
+            return
+        message_rate[request.sid] = time.time()
 
-    @socketio.on('get_online_users')
-    def online_users(data):
-        room_id = data.get('room_id', 'public')
-        emit('online_count', {
-            'count': room_service.online_count(room_id)
-        })
+        db.session.add(Message(room_id=int(room_id), user_uuid=user['uuid'], username=user['nickname'], content=content))
+        db.session.commit()
+
+        emit('new_message', {'username': user['nickname'], 'content': content}, room=room_id)
+
+    @socketio.on('disconnect')
+    def disconnect():
+        room_id = user_rooms.get(request.sid)
+        user = users.get(request.sid)
+        if room_id:
+            leave_room(room_id)
+            if redis_client and user:
+                redis_client.srem(f'room:{room_id}:users', user['uuid'])
+        users.pop(request.sid, None)
+        user_rooms.pop(request.sid, None)
+        message_rate.pop(request.sid, None)
