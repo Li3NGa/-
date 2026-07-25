@@ -1,6 +1,7 @@
 from flask_socketio import emit, join_room, leave_room
 from flask import request
-from app import db, redis_client
+from app import db
+import app as app_module
 from models.user import User
 from models.room import Room
 from models.message import Message
@@ -16,7 +17,12 @@ message_rate = {}
 room_users = {}
 
 
+def get_redis():
+    return getattr(app_module, 'redis_client', None)
+
+
 def get_online_count(room_id):
+    redis_client = get_redis()
     if redis_client:
         try:
             count = redis_client.scard(f'room:{room_id}:users')
@@ -57,6 +63,7 @@ def register_socket_events(socketio):
             room_users[room_id] = set()
         room_users[room_id].add(user['uuid'])
 
+        redis_client = get_redis()
         if redis_client:
             try:
                 redis_client.sadd(f'room:{room_id}:users', user['uuid'])
@@ -126,6 +133,7 @@ def register_socket_events(socketio):
             if room_id in room_users:
                 room_users[room_id].discard(user['uuid'])
 
+            redis_client = get_redis()
             if redis_client:
                 try:
                     redis_client.srem(f'room:{room_id}:users', user['uuid'])
