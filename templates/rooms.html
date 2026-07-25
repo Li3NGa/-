@@ -3,17 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Let Chat 聊天室大厅</title>
-<style>
-body{font-family:Arial;padding:30px;background:#f5f5f5}
-.room{background:white;padding:20px;margin:15px 0;border-radius:10px}
-button{padding:8px 15px;cursor:pointer}
-</style>
+<title>Let Chat - 聊天室大厅</title>
+<link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-<h1>Let Chat 聊天室大厅</h1>
-<button onclick="createRoom()">创建聊天室</button>
-<div id="rooms"></div>
+<div class="lobby-container">
+    <header class="lobby-header">
+        <div class="header-content">
+            <div class="header-icon">💬</div>
+            <div>
+                <h1>Let Chat</h1>
+                <p>匿名实时聊天室 · 自由交流</p>
+            </div>
+        </div>
+        <button class="create-btn" onclick="createRoom()">
+            <span>＋</span>
+            <span>创建聊天室</span>
+        </button>
+    </header>
+
+    <div class="rooms-grid" id="rooms">
+        <div class="loading-state">加载中...</div>
+    </div>
+</div>
 
 <script>
 function escapeHtml(text){
@@ -28,15 +40,23 @@ async function loadRooms(){
  const box=document.getElementById('rooms');
 
  if(!rooms.length){
-   box.innerHTML='<div class="room">暂无聊天室，请创建一个</div>';
+   box.innerHTML=`
+   <div class="empty-state">
+     <div class="empty-icon">🗂️</div>
+     <p>暂无聊天室</p>
+     <span>点击上方按钮创建一个吧</span>
+   </div>`;
    return;
  }
 
  box.innerHTML=rooms.map(r=>`
- <div class="room">
-   <h2>${escapeHtml(r.name)}</h2>
-   <p>${escapeHtml(r.description || '暂无介绍')}</p>
-   <button onclick="joinRoom(${r.id})">进入聊天室</button>
+ <div class="room-card" onclick="joinRoom(${r.id})">
+   <div class="room-card-icon">📢</div>
+   <div class="room-card-body">
+     <h2>${escapeHtml(r.name)}</h2>
+     <p>${escapeHtml(r.description || '暂无介绍')}</p>
+   </div>
+   <div class="room-card-arrow">→</div>
  </div>
  `).join('');
 }
@@ -49,10 +69,12 @@ async function createRoom(){
  const name=prompt('请输入聊天室名称');
  if(!name)return;
 
+ const desc=prompt('请输入聊天室描述（可留空）') || '';
+
  await fetch('/api/rooms/create',{
   method:'POST',
   headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({name})
+  body:JSON.stringify({name,description:desc})
  });
 
  loadRooms();

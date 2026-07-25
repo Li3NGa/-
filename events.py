@@ -19,10 +19,12 @@ room_users = {}
 def get_online_count(room_id):
     if redis_client:
         try:
-            return redis_client.scard(f'room:{room_id}:users')
+            count = redis_client.scard(f'room:{room_id}:users')
+            if count > 0:
+                return count
         except Exception:
             pass
-    return len(room_users.get(room_id, set()))
+    return len(get_online_users(room_id))
 
 
 def get_online_users(room_id):
@@ -113,6 +115,11 @@ def register_socket_events(socketio):
     def disconnect():
         room_id = user_rooms.get(request.sid)
         user = users.get(request.sid)
+
+        users.pop(request.sid, None)
+        user_rooms.pop(request.sid, None)
+        message_rate.pop(request.sid, None)
+
         if room_id and user:
             leave_room(room_id)
 
@@ -132,7 +139,3 @@ def register_socket_events(socketio):
             emit('online_users', online_users_list, room=room_id)
 
             emit('system_message', {'message': f"{user['nickname']} 离开聊天室"}, room=room_id)
-
-        users.pop(request.sid, None)
-        user_rooms.pop(request.sid, None)
-        message_rate.pop(request.sid, None)
