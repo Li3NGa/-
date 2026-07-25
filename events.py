@@ -85,7 +85,7 @@ def register_socket_events(socketio):
 
         history = Message.query.filter_by(room_id=int(room_id)).order_by(Message.id.desc()).limit(50).all()
         emit('room_history', [{'username': m.username, 'content': m.content, 'time': m.created_at.isoformat()} for m in reversed(history)])
-        emit('system_message', {'message': f"{user['nickname']} 加入聊天室"}, room=room_id)
+        emit('system_message', {'message': f"{user['nickname']} 加入了房间"}, room=room_id)
 
     @socketio.on('typing')
     def typing(data):
@@ -146,4 +146,4 @@ def register_socket_events(socketio):
             online_users_list = get_online_users(room_id)
             emit('online_users', online_users_list, room=room_id)
 
-            emit('system_message', {'message': f"{user['nickname']} 离开聊天室"}, room=room_id)
+            emit('system_message', {'message': f"{user['nickname']} 离开了房间"}, room=room_id)
