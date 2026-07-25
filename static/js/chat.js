@@ -51,6 +51,12 @@ socket.on('online_users', users => {
     renderOnlineUsers(users);
 });
 
+socket.on('error', data => {
+    if (data.message) {
+        addSystemMessage(data.message);
+    }
+});
+
 function addMessage(user, text, timeStr, isOwn) {
     const div = document.createElement('div');
     div.className = 'message' + (isOwn ? ' own' : '');
@@ -141,9 +147,9 @@ function insertEmoji(emoji) {
     input.focus();
 }
 
-emojiGrid.innerHTML = emojiGrid.textContent.split(' ').map(e => 
+emojiGrid.innerHTML = emojiGrid.textContent.trim().split(/\s+/).filter(e => e).map(e =>
     `<span onclick="insertEmoji('${e}')">${e}</span>`
-).join('');
+).join(' ');
 
 input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -158,11 +164,17 @@ document.addEventListener('click', e => {
     }
 });
 
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function renderOnlineUsers(users) {
     onlineUsers.innerHTML = users.map(u => `
         <div class="user-item">
-            <div class="user-avatar">${u.nickname.charAt(0).toUpperCase()}</div>
-            <div class="user-name">${u.nickname}</div>
+            <div class="user-avatar">${escapeHtml(u.nickname.charAt(0).toUpperCase())}</div>
+            <div class="user-name">${escapeHtml(u.nickname)}</div>
             <div class="user-status"></div>
         </div>
     `).join('');

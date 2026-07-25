@@ -6,9 +6,16 @@ NAMES = [
     'SilentMoon',
     'CloudWalker',
     'NightStar',
-    'LittleRiver'
+    'LittleRiver',
+    'RedLeaf',
+    'SnowOwl',
+    'DarkPhoenix',
+    'GoldenEagle',
+    'SilverWolf'
 ]
 
 
 def generate_nickname():
-    return random.choice(NAMES)
+    name = random.choice(NAMES)
+    suffix = random.randint(100, 999)
+    return f'{name}{suffix}'

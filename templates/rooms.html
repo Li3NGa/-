@@ -16,6 +16,12 @@ button{padding:8px 15px;cursor:pointer}
 <div id="rooms"></div>
 
 <script>
+function escapeHtml(text){
+ const div=document.createElement('div');
+ div.textContent=text;
+ return div.innerHTML;
+}
+
 async function loadRooms(){
  const res=await fetch('/api/rooms');
  const rooms=await res.json();
@@ -28,8 +34,8 @@ async function loadRooms(){
 
  box.innerHTML=rooms.map(r=>`
  <div class="room">
-   <h2>${r.name}</h2>
-   <p>${r.description || '暂无介绍'}</p>
+   <h2>${escapeHtml(r.name)}</h2>
+   <p>${escapeHtml(r.description || '暂无介绍')}</p>
    <button onclick="joinRoom(${r.id})">进入聊天室</button>
  </div>
  `).join('');

@@ -5,8 +5,10 @@ from models.user import User
 from models.room import Room
 from models.message import Message
 from utils.nickname import generate_nickname
+from security.message_filter import check_message
 import uuid
 import time
+import html
 
 users = {}
 user_rooms = {}
@@ -90,8 +92,12 @@ def register_socket_events(socketio):
             return
 
         user = users.get(request.sid, {'uuid': '', 'nickname': '匿名用户'})
-        content = str(data.get('content', ''))[:500]
+        content = html.escape(str(data.get('content', '')))[:500]
         if not content.strip():
+            return
+
+        if not check_message(content):
+            emit('error', {'message': '消息包含违禁词，已被拦截'}, room=request.sid)
             return
 
         if time.time() - message_rate.get(request.sid, 0) < 1:
